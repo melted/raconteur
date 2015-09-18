@@ -2,9 +2,9 @@ var situation = require('raconteur/situation.js'),
     $ = require('jquery'),
     oneOf = require('raconteur/oneOf.js'),
     elements = require('raconteur/elements.js'),
-    qualities = require('raconteur/qualities.js');
-
-situation.exportUndum();
+    qualities = require('raconteur/qualities.js'),
+    racontest = require('raconteur/racontest.js'),
+    undum = require('undum-commonjs');
 
 var a = elements.a,
     span = elements.span;
@@ -173,19 +173,68 @@ situation('progress-bar', {
   choices: ['return']
 });
 
+situation('continuation', {
+  content: `
+    # Continuation and Sections
+
+    Each situation is output to the screen as its own section. You can
+    go to [the next situation](continuation-continue) to see a situation
+    that adds to the existing section, instead of writing a new one.
+    `,
+  optionText: 'Continuations and Sections',
+  tags: ['testing-option'],
+  classes: ['styled-situation']
+});
+
+situation ('continuation-continue', {
+  content: `
+    This feature allows situations to be individually styled. The \`classes\`
+    attribute of a situation controls additional classes to be added to the
+    section.
+    `,
+  continueSection: true,
+  choices: ['return']
+});
+
+/*
+  Custom quality definition. We make a constructor for an object that supplies
+  the QualityDefinition interface Undum expects, and then pass that to
+  qualities.create() to get a factory.
+*/
+
+var DifficultyQuality = function (title, threshold) {
+  undum.QualityDefinition.call(this, title);
+  this.threshold = threshold;
+};
+
+DifficultyQuality.prototype.format = function (character, value) {
+  if (value > this.threshold) return "hard";
+  return "easy";
+};
+
+var difficulty = qualities.create(DifficultyQuality);
+
 qualities({
   stats: {
     name: 'Statistics',
     perception: qualities.integer("Perception"),
     intelligence: qualities.integer("Intelligence"),
     size: qualities.fudgeAdjectives("Size")
+  },
+  settings: {
+    name: 'Settings',
+    combatDifficulty: difficulty("Combat", 5),
+    puzzleDifficulty: qualities.use(DifficultyQuality, "Puzzles", 3)
   }
 });
 
 undum.game.init = function (character, system) {
+  racontest.init(system);
   character.qualities.intelligence = 10;
   character.qualities.perception = 10;
   character.qualities.size = 1;
+  character.qualities.combatDifficulty = 6;
+  character.qualities.puzzleDifficulty = 2;
   myIterators.consistentIterator =
     oneOf('Blue', 'Black', 'Green', 'Red', 'White')
     .inRandomOrder(system);
